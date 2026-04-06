@@ -125,16 +125,28 @@ public static class ConfigureServices
     }
 
     public static void AddAndConfigureRateLimiters(this IServiceCollection services)
-    {
+    {        
         services.AddRateLimiter(options =>
         {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>            
+                RateLimitPartition.GetFixedWindowLimiter(
+                 partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                 factory: _ => new FixedWindowRateLimiterOptions
+                 {
+                     PermitLimit = 50,
+                     Window = TimeSpan.FromSeconds(60)
+                 }
+                )
+            );
+
             options.AddFixedWindowLimiter("fixed", config =>
             {
-               config.Window = TimeSpan.FromSeconds(10);
-               config.PermitLimit = 60; // 60 req/10s .. 6 req / s
-               config.QueueLimit = 100; // 100 requests in queue for next window            
-               config.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                config.Window = TimeSpan.FromSeconds(10);
+                config.PermitLimit = 60; // 60 req/10s .. 6 req / s
+                config.QueueLimit = 100; // 100 requests in queue for next window            
+                config.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;                
             });
 
             options.AddSlidingWindowLimiter("sliding", config =>
@@ -158,13 +170,13 @@ public static class ConfigureServices
 
             options.AddConcurrencyLimiter("concurrent", config =>
             {
-               config.PermitLimit = 10; // allowed only 10 concurrent requests
-               config.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-               config.QueueLimit = 10; 
+                config.PermitLimit = 10; // allowed only 10 concurrent requests
+                config.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                config.QueueLimit = 10;
             });
         });
 
-        
+
     }
 
     public static void AddDbContextAndIdentity(this IServiceCollection services, IConfiguration configuration)
