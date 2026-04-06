@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NotesKeeper.Core/NotesKeeper.Core.csproj" />
+    <Project Path="src/NotesKeeper.Infrastructure/NotesKeeper.Infrastructure.csproj" />
+    <Project Path="src/NotesKeeper.Tests/NotesKeeper.Tests.csproj" />
+    <Project Path="src/NotesKeeperWebApi/NotesKeeperWebApi.csproj" />
+  </Folder>
+</Solution>
