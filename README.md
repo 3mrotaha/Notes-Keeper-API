@@ -8,10 +8,26 @@ A RESTful Web API for managing personal notes, tags, and reminders — built wit
 
 The solution is organized into four projects with strict dependency rules:
 
-```
-NotesKeeperWebApi  -->  Core  <--  Infrastructure
-       |                                  |
-       +----------> Infrastructure -------+
+```mermaid
+graph TD
+    subgraph Solution
+        WebApi[NotesKeeperWebApi<br/><i>Composition Root</i><br/>Controllers, Middleware,<br/>Filters, DI Config]
+        Core[NotesKeeper.Core<br/><i>No External Dependencies</i><br/>Entities, DTOs, Services,<br/>Contracts, Mappings]
+        Infra[NotesKeeper.Infrastructure<br/><i>Data Access</i><br/>EF Core, Repositories,<br/>Interceptors, Migrations]
+        Tests[NotesKeeper.Tests<br/><i>xUnit + Moq</i><br/>Unit &amp; Integration Tests]
+    end
+
+    WebApi --> Core
+    WebApi --> Infra
+    Infra --> Core
+    Tests --> Core
+    Tests --> Infra
+    Tests --> WebApi
+
+    style Core fill:#2d6a4f,stroke:#1b4332,color:#fff
+    style Infra fill:#264653,stroke:#1d3557,color:#fff
+    style WebApi fill:#e76f51,stroke:#c1440e,color:#fff
+    style Tests fill:#457b9d,stroke:#1d3557,color:#fff
 ```
 
 - **Core** has zero external dependencies — it contains domain entities, DTOs, service contracts, service implementations, and mapping extensions. Business logic never touches EF Core or HTTP directly.
@@ -101,6 +117,61 @@ A custom middleware catches all unhandled exceptions, logs them as `Critical`, a
 - **CORS** configured for an Angular frontend origin
 - **DinkToPdf** integration for HTML-to-PDF conversion
 - **Many-to-many** relationships with an explicit join entity (`TagsAssignments`) and composite key
+
+## API Endpoints
+
+All endpoints require JWT authentication unless marked with `[AllowAnonymous]`. Versioning is via the `api-version` header (default: `1.0`).
+
+### Authentication (`/api/account`)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/register` | No | Register a new user (rate limited). Redirects to email confirmation. |
+| `POST` | `/login` | No | Authenticate and receive JWT + refresh token (rate limited). |
+| `GET` | `/logout` | Yes | Sign out the current user. |
+| `POST` | `/refresh-token` | No | Exchange an expired JWT + valid refresh token for a new pair. |
+| `GET` | `/email-token-gen/{userId}` | No | Generate an email confirmation link for a user. |
+| `GET` | `/confirm-email/{userId}?emailConfirmationToken=...` | No | Confirm email and receive JWT tokens. |
+| `GET` | `/IsEmailAlreadyUsed?email=...` | No | Check if an email is already registered. |
+
+### Notes (`/api/note`)
+
+Requires `UserId` header matching the JWT claim.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/` | Create a new note. |
+| `GET` | `/{noteId}` | Get a note by ID (ownership verified). |
+| `PUT` | `/{noteId}` | Update a note's title and body (ownership verified). |
+| `DELETE` | `/{noteId}` | Delete a note (ownership verified). |
+| `GET` | `/user` | Get all notes for the authenticated user. |
+| `GET` | `/search/{title}` | Search user's notes by title. |
+| `GET` | `/tag/{tagId}` | Get user's notes filtered by tag ID. |
+| `GET` | `/tag/search/{tagName}` | Get user's notes filtered by tag name. |
+| `PUT` | `/tag/assign/{noteId}` | Assign a tag to a note (body: `tagId`). |
+| `PUT` | `/tag/remove/{noteId}` | Remove a tag from a note (body: `tagId`). |
+| `POST` | `/reminder/{noteId}` | Create a reminder and attach it to a note. |
+| `PUT` | `/reminder/{noteId}/{reminderId}` | Update an existing reminder on a note. |
+| `DELETE` | `/reminder/{noteId}` | Remove and delete a reminder from a note (body: `reminderId`). |
+
+### Tags (`/api/tag`)
+
+Requires `UserId` header matching the JWT claim.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/` | Create a new tag. |
+| `GET` | `/{tagId}` | Get a tag by ID. |
+| `GET` | `/{name}` | Search tags by name. |
+| `GET` | `/user/{userId}` | Get all tags for a user. |
+| `PUT` | `/{tagId}` | Update a tag's name and comment. |
+| `DELETE` | `/{tagId}` | Soft-delete a tag. |
+
+### File Export (`/api/file`) — v2
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/export/note/{noteId}` | Export a note as a styled PDF (rate limited: concurrency). |
 
 ## Tech Stack
 
