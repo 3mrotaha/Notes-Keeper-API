@@ -105,7 +105,7 @@ namespace NotesKeeper.UI.Controllers
             {
                 string Errors = string.Join(Environment.NewLine, _catchErrors());
                 _logger.LogWarning("Register: model validation failed for {Email}. Errors: {Errors}", registerDto.Email, Errors);
-                return Problem(detail: Errors);
+                return Problem(detail: Errors, statusCode: StatusCodes.Status400BadRequest);
             }
 
             var user = registerDto.ToUser();
@@ -125,7 +125,7 @@ namespace NotesKeeper.UI.Controllers
             {
                 string Errors = string.Join(Environment.NewLine, result.Errors.Select(error => error.Description));
                 _logger.LogWarning("Register: user creation failed for {Email}. Errors: {Errors}", registerDto.Email, Errors);
-                return Problem(detail: Errors);
+                return Problem(detail: Errors, statusCode: StatusCodes.Status400BadRequest);
             }
         }
 
@@ -145,7 +145,7 @@ namespace NotesKeeper.UI.Controllers
             if (user == null)
             {
                 _logger.LogWarning("Login: user not found for Email {Email}", loginDto.Email);
-                return Problem(detail: "Invalid email or password.");
+                return Problem(detail: "Invalid email or password.", statusCode: StatusCodes.Status401Unauthorized);
             }
 
             var result = await _signInManager.PasswordSignInAsync(user, loginDto.Password, isPersistent: false, lockoutOnFailure: false);
@@ -163,7 +163,7 @@ namespace NotesKeeper.UI.Controllers
             else
             {
                 _logger.LogWarning("Login: failed sign-in for Email {Email}. Locked: {IsLockedOut}", loginDto.Email, result.IsLockedOut);
-                return Problem(detail: "Invalid email or password.");
+                return Problem(detail: "Invalid email or password.", statusCode: StatusCodes.Status401Unauthorized);
             }
         }
 
